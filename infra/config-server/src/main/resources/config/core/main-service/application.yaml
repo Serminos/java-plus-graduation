@@ -1,9 +1,12 @@
+server:
+  port: 0
+
 spring:
   application:
     name: main-service
   datasource:
     driverClassName: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:5432/ewm_main_db
+    url: jdbc:postgresql://ewm-db:5432/ewm_main_db
     username: postgres
     password: password
   jpa:
@@ -16,9 +19,6 @@ spring:
   sql:
     init:
       mode: always
-
-server:
-  port: 0
 
 discovery:
   services:
