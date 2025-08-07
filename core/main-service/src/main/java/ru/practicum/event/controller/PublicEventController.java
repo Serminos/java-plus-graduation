@@ -17,7 +17,7 @@ import ru.practicum.event.dto.EventShortDto;
 import ru.practicum.event.dto.SearchPublicEventsParamDto;
 import ru.practicum.event.model.EventSort;
 import ru.practicum.event.service.EventService;
-import ru.practicum.exceptions.ValidationException;
+import ru.practicum.exception.ValidationException;
 import ru.practicum.stats.dto.EndpointHitDto;
 import ru.practicum.stats.dto.ViewStatsDto;
 

@@ -6,7 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.user.dto.UserDto;
+import ru.practicum.dto.user.UserDto;
 import ru.practicum.user.service.UserService;
 
 import java.util.List;

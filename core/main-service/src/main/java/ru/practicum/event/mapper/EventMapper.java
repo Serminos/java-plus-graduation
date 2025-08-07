@@ -7,19 +7,17 @@ import ru.practicum.event.dto.EventShortDto;
 import ru.practicum.event.dto.NewEventDto;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.model.EventState;
-import ru.practicum.user.dto.UserDto;
-import ru.practicum.user.model.User;
 
 import java.time.LocalDateTime;
 
 public class EventMapper {
 
     public static Event toEvent(NewEventDto newEventDto,
-                                User initiator,
+                                Long initiator,
                                 Category category) {
 
         return Event.builder()
-                .initiator(initiator)
+                .initiatorId(initiator)
                 .annotation(newEventDto.getAnnotation())
                 .category(category)
                 .description(newEventDto.getDescription())
@@ -44,10 +42,7 @@ public class EventMapper {
                 .confirmedRequests(event.getConfirmedRequests())
                 .eventDate(event.getEventDate())
                 .id(event.getId())
-                .initiator(new UserDto(
-                        event.getInitiator().getId(),
-                        event.getInitiator().getName(),
-                        "email"))
+                .initiator(event.getInitiatorId())
                 .paid(event.getPaid())
                 .title(event.getTitle())
                 .views(0L)
@@ -65,10 +60,7 @@ public class EventMapper {
                 .description(event.getDescription())
                 .eventDate(event.getEventDate())
                 .id(event.getId())
-                .initiator(new UserDto(
-                        event.getInitiator().getId(),
-                        event.getInitiator().getName(),
-                        "email"))
+                .initiator(event.getInitiatorId())
                 .location(event.getLocation())
                 .paid(event.getPaid())
                 .participantLimit(event.getParticipantLimit())

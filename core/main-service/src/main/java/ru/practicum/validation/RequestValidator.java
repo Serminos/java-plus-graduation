@@ -5,11 +5,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.model.EventState;
-import ru.practicum.exceptions.ConflictException;
-import ru.practicum.exceptions.ValidationException;
+import ru.practicum.exception.ConflictException;
+import ru.practicum.exception.ValidationException;
 import ru.practicum.request.model.Request;
 import ru.practicum.request.repository.RequestRepository;
-import ru.practicum.user.model.User;
 
 @Slf4j
 @Component
@@ -22,10 +21,10 @@ public class RequestValidator {
         this.requestRepository = requestRepository;
     }
 
-    public void validateRequestCreation(User user, Event event) {
+    public void validateRequestCreation(Long initiator, Event event) {
         checkEventState(event);
-        checkEventOwnership(user, event);
-        checkDuplicateRequest(user.getId(), event.getId());
+        checkEventOwnership(initiator, event);
+        checkDuplicateRequest(initiator, event.getId());
         checkEventCapacity(event);
     }
 
@@ -35,8 +34,8 @@ public class RequestValidator {
         }
     }
 
-    private void checkEventOwnership(User user, Event event) {
-        if (event.getInitiator().equals(user)) {
+    private void checkEventOwnership(Long initiator, Event event) {
+        if (event.getInitiatorId().equals(initiator)) {
             throw new ConflictException("Пользователь не может подать заяку на участие в своем же мероприятии");
         }
     }
@@ -49,10 +48,10 @@ public class RequestValidator {
                 });
     }
 
-    public void validateRequestOwnership(User user, Request request) {
-        if (!request.getRequester().equals(user)) {
+    public void validateRequestOwnership(Long initiator, Request request) {
+        if (!request.getRequesterId().equals(initiator)) {
             throw new ValidationException("Только пользователь подавший заявку может отменить ее. " +
-                    "Пользователь ID: " + user.getId() +
+                    "Пользователь ID: " + initiator +
                     "Заявка с ID: " + request.getId());
         }
     }

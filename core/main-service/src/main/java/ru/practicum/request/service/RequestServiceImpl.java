@@ -1,14 +1,16 @@
 package ru.practicum.request.service;
 
 
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.api.UserApi;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.repository.EventRepository;
-import ru.practicum.exceptions.NotFoundException;
-import ru.practicum.exceptions.ValidationException;
+import ru.practicum.exception.NotFoundException;
+import ru.practicum.exception.ValidationException;
 import ru.practicum.request.dto.ParticipationRequestDto;
 import ru.practicum.request.mapper.RequestMapper;
 import ru.practicum.request.model.Request;
@@ -16,8 +18,6 @@ import ru.practicum.request.model.RequestStatus;
 import ru.practicum.request.model.RequestStatusEntity;
 import ru.practicum.request.repository.RequestRepository;
 import ru.practicum.request.repository.RequestStatusRepository;
-import ru.practicum.user.model.User;
-import ru.practicum.user.repository.UserRepository;
 import ru.practicum.validation.RequestValidator;
 
 import java.time.LocalDateTime;
@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 public class RequestServiceImpl implements RequestService {
     private final RequestRepository requestRepository;
     private final RequestStatusRepository requestStatusRepository;
-    private final UserRepository userRepository;
+    private final UserApi userApi;
     private final EventRepository eventRepository;
     private final RequestValidator requestValidator;
 
@@ -46,12 +46,12 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     public ParticipationRequestDto createParticipationRequest(Long userId, Long eventId) {
-        final User user = getUserById(userId);
+        final Long initiator = getUserById(userId);
         final Event event = getEventById(eventId);
 
-        requestValidator.validateRequestCreation(user, event);
+        requestValidator.validateRequestCreation(initiator, event);
 
-        final Request request = buildNewRequest(user, event);
+        final Request request = buildNewRequest(initiator, event);
         determineInitialStatus(event, request);
 
         final Request savedRequest = requestRepository.save(request);
@@ -64,10 +64,10 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     public ParticipationRequestDto cancelParticipationRequest(Long userId, Long requestId) {
-        final User user = getUserById(userId);
+        final Long initiator = getUserById(userId);
         final Request request = getRequestById(requestId);
 
-        requestValidator.validateRequestOwnership(user, request);
+        requestValidator.validateRequestOwnership(initiator, request);
         updateRequestStatus(request, RequestStatus.CANCELED);
 
         if (request.getStatus().getName() == RequestStatus.CONFIRMED) {
@@ -78,9 +78,13 @@ public class RequestServiceImpl implements RequestService {
         return RequestMapper.toRequestDto(request);
     }
 
-    private User getUserById(Long userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Не найден пользователя с ID: " + userId));
+    private Long getUserById(Long userId) {
+        try {
+            return userApi.getUserById(userId).getId();
+        } catch (FeignException e) {
+            new NotFoundException("Не найден пользователя с ID: " + userId);
+            return null;
+        }
     }
 
     private Event getEventById(Long eventId) {
@@ -98,10 +102,10 @@ public class RequestServiceImpl implements RequestService {
                 .orElseThrow(() -> new NotFoundException("Не найден статус: " + newStatus.name()));
     }
 
-    private Request buildNewRequest(User user, Event event) {
+    private Request buildNewRequest(Long initiator, Event event) {
         RequestStatusEntity requestStatusEntity = getRequestStatusEntityByRequestStatus(RequestStatus.PENDING);
         return Request.builder()
-                .requester(user)
+                .requesterId(initiator)
                 .event(event)
                 .created(LocalDateTime.now())
                 .status(requestStatusEntity)

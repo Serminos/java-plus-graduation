@@ -3,7 +3,6 @@ package ru.practicum.request.model;
 import jakarta.persistence.*;
 import lombok.*;
 import ru.practicum.event.model.Event;
-import ru.practicum.user.model.User;
 
 import java.time.LocalDateTime;
 
@@ -21,9 +20,8 @@ public class Request {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "requester_id")
-    private User requester;
+    @Column(name = "requester_id")
+    private Long requesterId;
 
     @ManyToOne
     @JoinColumn(name = "event_id")

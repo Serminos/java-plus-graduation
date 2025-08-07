@@ -3,16 +3,15 @@ package ru.practicum.validation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import ru.practicum.api.UserApi;
 import ru.practicum.event.dto.UpdateEventUserRequest;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.model.EventState;
-import ru.practicum.exceptions.ConflictException;
-import ru.practicum.exceptions.NotFoundException;
-import ru.practicum.exceptions.ValidationException;
+import ru.practicum.exception.ConflictException;
+import ru.practicum.exception.NotFoundException;
+import ru.practicum.exception.ValidationException;
 import ru.practicum.request.model.Request;
 import ru.practicum.request.model.RequestStatus;
-import ru.practicum.user.model.User;
-import ru.practicum.user.repository.UserRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,17 +21,17 @@ import java.util.Objects;
 @Component
 @RequiredArgsConstructor
 public class EventValidator {
-    private final UserRepository userRepository;
+    private final UserApi userApi;
 
     public void validateUserExists(Long userId) {
-        if (!userRepository.existsById(userId)) {
+        if (userApi.getUserById(userId) == null) {
             log.error("Пользователя с id {} не найден", userId);
             throw new NotFoundException("Пользователя с id не найден: " + userId);
         }
     }
 
-    public void validateInitiator(Event event, User user) {
-        if (!event.getInitiator().equals(user)) {
+    public void validateInitiator(Event event, Long initiator) {
+        if (!event.getInitiatorId().equals(initiator)) {
             throw new ValidationException("У этого события другой инициатор");
         }
     }
@@ -66,13 +65,13 @@ public class EventValidator {
     }
 
     public void validateEventOwnership(Event event, Long userId) {
-        if (!event.getInitiator().getId().equals(userId)) {
+        if (!event.getInitiatorId().equals(userId)) {
             throw new ValidationException("Только пользователь создавший событие может получить его полное описание");
         }
     }
 
-    public void validateUserUpdate(Event oldEvent, User user, UpdateEventUserRequest updateDto) {
-        if (!oldEvent.getInitiator().getId().equals(user.getId())) {
+    public void validateUserUpdate(Event oldEvent, Long initiator, UpdateEventUserRequest updateDto) {
+        if (!oldEvent.getInitiatorId().equals(initiator)) {
             throw new ValidationException("Только пользователь создавший событие может его редактировать");
         }
         if (oldEvent.getState().equals(EventState.PUBLISHED)) {

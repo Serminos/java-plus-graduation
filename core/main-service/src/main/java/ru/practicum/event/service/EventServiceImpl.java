@@ -1,5 +1,6 @@
 package ru.practicum.event.service;
 
+import feign.FeignException;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import ru.practicum.api.UserApi;
 import ru.practicum.category.model.Category;
 import ru.practicum.category.repository.CategoryRepository;
 import ru.practicum.event.dto.*;
@@ -21,9 +23,9 @@ import ru.practicum.event.model.Location;
 import ru.practicum.event.model.StateAction;
 import ru.practicum.event.repository.EventRepository;
 import ru.practicum.event.repository.LocationRepository;
-import ru.practicum.exceptions.ConflictException;
-import ru.practicum.exceptions.NotFoundException;
-import ru.practicum.exceptions.ValidationException;
+import ru.practicum.exception.ConflictException;
+import ru.practicum.exception.NotFoundException;
+import ru.practicum.exception.ValidationException;
 import ru.practicum.request.dto.EventRequestStatusUpdateRequest;
 import ru.practicum.request.dto.ParticipationRequestDto;
 import ru.practicum.request.mapper.RequestMapper;
@@ -32,8 +34,6 @@ import ru.practicum.request.model.RequestStatus;
 import ru.practicum.request.model.RequestStatusEntity;
 import ru.practicum.request.repository.RequestRepository;
 import ru.practicum.request.repository.RequestStatusRepository;
-import ru.practicum.user.model.User;
-import ru.practicum.user.repository.UserRepository;
 import ru.practicum.validation.EventValidator;
 
 import java.time.LocalDateTime;
@@ -49,7 +49,7 @@ import java.util.stream.Collectors;
 @Transactional
 public class EventServiceImpl implements EventService {
     private final EventRepository eventRepository;
-    private final UserRepository userRepository;
+    private final UserApi userApi;
     private final CategoryRepository categoryRepository;
     private final LocationRepository locationRepository;
     private final RequestRepository requestRepository;
@@ -69,17 +69,17 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public EventFullDto createEvent(Long userId, NewEventDto request) {
-        User user = getUserById(userId);
+        Long initiator = getUserById(userId);
         Category category = getCategoryById(request.getCategory());
         Location location = resolveLocation(request.getLocation());
 
-        Event event = EventMapper.toEvent(request, user, category);
+        Event event = EventMapper.toEvent(request, initiator, category);
         event.setLocation(location);
         event.setState(EventState.PENDING);
 
         Event savedEvent = eventRepository.save(event);
         log.info("Событие успешно добавлено под id {} со статусом {} и ожидается подтверждение",
-                user.getId(), event.getState());
+                initiator, event.getState());
         return EventMapper.toFullDto(savedEvent);
     }
 
@@ -96,10 +96,10 @@ public class EventServiceImpl implements EventService {
     public EventFullDto updateUserEvent(Long userId,
                                         Long eventId,
                                         UpdateEventUserRequest updateDto) {
-        User user = getUserById(userId);
+        Long initiator = getUserById(userId);
         Event event = getEventById(eventId);
 
-        eventValidator.validateUserUpdate(event, user, updateDto);
+        eventValidator.validateUserUpdate(event, initiator, updateDto);
         applyUserUpdates(event, updateDto);
 
         Event updatedEvent = eventRepository.save(event);
@@ -122,9 +122,9 @@ public class EventServiceImpl implements EventService {
     public Map<String, List<ParticipationRequestDto>> approveRequests(Long userId,
                                                                       Long eventId,
                                                                       EventRequestStatusUpdateRequest eventRequestStatusUpdateRequest) {
-        User user = getUserById(userId);
+        Long initiator = getUserById(userId);
         Event event = getEventById(eventId);
-        eventValidator.validateInitiator(event, user);
+        eventValidator.validateInitiator(event, initiator);
 
         List<Request> requests = getAndValidateRequests(eventId, eventRequestStatusUpdateRequest.getRequestIds());
         RequestStatus status = eventRequestStatusUpdateRequest.getStatus();
@@ -273,9 +273,13 @@ public class EventServiceImpl implements EventService {
                 .toList();
     }
 
-    private User getUserById(Long userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Не найден пользователя с ID: " + userId));
+    private Long getUserById(Long userId) {
+        try {
+            return userApi.getUserById(userId).getId();
+        } catch (FeignException e) {
+            new NotFoundException("Не найден пользователя с ID: " + userId);
+            return null;
+        }
     }
 
     private Event getEventById(Long eventId) {

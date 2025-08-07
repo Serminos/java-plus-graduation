@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 public class CommentResponseDto {
     private Long id;
     private String text;
-    private String authorName;
+    private Long authorId;
     private EventShortDto event;
     private LocalDateTime created;
 }

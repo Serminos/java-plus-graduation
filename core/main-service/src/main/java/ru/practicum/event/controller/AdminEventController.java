@@ -17,7 +17,7 @@ import ru.practicum.event.dto.SearchAdminEventsParamDto;
 import ru.practicum.event.dto.UpdateEventAdminRequest;
 import ru.practicum.event.model.EventState;
 import ru.practicum.event.service.EventService;
-import ru.practicum.exceptions.ValidationException;
+import ru.practicum.exception.ValidationException;
 
 import java.time.LocalDateTime;
 import java.util.List;

@@ -5,15 +5,6 @@ CREATE TABLE IF NOT EXISTS categories (
 );
 CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name);
 
--- Таблица пользователей
-CREATE TABLE IF NOT EXISTS users (
-    id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE
-);
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_name ON users(name);
-
 -- Таблица локаций
 CREATE TABLE IF NOT EXISTS locations (
     id SERIAL PRIMARY KEY,
@@ -38,7 +29,7 @@ CREATE TABLE IF NOT EXISTS events (
     category_id BIGINT NOT NULL REFERENCES categories(id),
     paid BOOLEAN NOT NULL,
     event_date TIMESTAMP NOT NULL,
-    initiator_id BIGINT NOT NULL REFERENCES users(id),
+    initiator_id BIGINT,
     description TEXT NOT NULL,
     participant_limit INT NOT NULL DEFAULT 0,
     state VARCHAR(255),
@@ -82,7 +73,7 @@ CREATE TABLE IF NOT EXISTS request_statuses (
 
 CREATE TABLE IF NOT EXISTS participation_requests (
     id BIGSERIAL PRIMARY KEY,
-    requester_id BIGINT NOT NULL REFERENCES users(id),
+    requester_id BIGINT,
     event_id BIGINT NOT NULL REFERENCES events(id),
     status_id INT NOT NULL REFERENCES request_statuses(id),
     created TIMESTAMP NOT NULL DEFAULT now(),
@@ -104,8 +95,8 @@ INSERT INTO request_statuses (name) VALUES
 CREATE TABLE IF NOT EXISTS comments (
     id BIGSERIAL PRIMARY KEY,
     text VARCHAR(2000) NOT NULL,
-    event_id BIGINT NOT NULL REFERENCES events (id),
-    author_id BIGINT NOT NULL REFERENCES users (id),
+    event_id BIGINT,
+    author_id BIGINT,
     created TIMESTAMP WITHOUT TIME ZONE NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_comments_text ON comments(text);

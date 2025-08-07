@@ -1,6 +1,6 @@
 package ru.practicum.user.mapper;
 
-import ru.practicum.user.dto.UserDto;
+import ru.practicum.dto.user.UserDto;
 import ru.practicum.user.model.User;
 
 public class UserMapper {

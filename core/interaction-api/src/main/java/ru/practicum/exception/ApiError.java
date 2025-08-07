@@ -1,4 +1,4 @@
-package ru.practicum.exceptions;
+package ru.practicum.exception;
 import lombok.*;
 
 import java.time.LocalDateTime;
