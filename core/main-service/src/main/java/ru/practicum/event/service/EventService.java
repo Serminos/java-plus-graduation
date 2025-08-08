@@ -2,9 +2,8 @@ package ru.practicum.event.service;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Pageable;
+import ru.practicum.dto.request.ParticipationRequestDto;
 import ru.practicum.event.dto.*;
-import ru.practicum.request.dto.EventRequestStatusUpdateRequest;
-import ru.practicum.request.dto.ParticipationRequestDto;
 
 import java.util.List;
 import java.util.Map;

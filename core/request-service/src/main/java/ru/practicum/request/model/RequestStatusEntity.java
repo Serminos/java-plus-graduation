@@ -3,6 +3,7 @@ package ru.practicum.request.model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import ru.practicum.dto.request.RequestStatus;
 
 @Entity
 @Table(name = "request_statuses")

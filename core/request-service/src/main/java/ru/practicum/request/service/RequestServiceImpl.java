@@ -11,14 +11,14 @@ import ru.practicum.event.model.Event;
 import ru.practicum.event.repository.EventRepository;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.exception.ValidationException;
-import ru.practicum.request.dto.ParticipationRequestDto;
+import ru.practicum.dto.request.ParticipationRequestDto;
 import ru.practicum.request.mapper.RequestMapper;
 import ru.practicum.request.model.Request;
-import ru.practicum.request.model.RequestStatus;
+import ru.practicum.dto.request.RequestStatus;
 import ru.practicum.request.model.RequestStatusEntity;
 import ru.practicum.request.repository.RequestRepository;
 import ru.practicum.request.repository.RequestStatusRepository;
-import ru.practicum.validation.RequestValidator;
+import ru.practicum.request.validation.RequestValidator;
 
 import java.time.LocalDateTime;
 import java.util.List;

@@ -2,7 +2,7 @@ package ru.practicum.request.dto;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-import ru.practicum.request.model.RequestStatus;
+import ru.practicum.dto.request.RequestStatus;
 
 import java.util.List;
 

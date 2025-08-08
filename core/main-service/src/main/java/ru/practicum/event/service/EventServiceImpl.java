@@ -12,9 +12,11 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import ru.practicum.api.RequestApi;
 import ru.practicum.api.UserApi;
 import ru.practicum.category.model.Category;
 import ru.practicum.category.repository.CategoryRepository;
+import ru.practicum.dto.request.ParticipationRequestDto;
 import ru.practicum.event.dto.*;
 import ru.practicum.event.mapper.EventMapper;
 import ru.practicum.event.model.Event;
@@ -26,8 +28,7 @@ import ru.practicum.event.repository.LocationRepository;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.exception.ValidationException;
-import ru.practicum.request.dto.EventRequestStatusUpdateRequest;
-import ru.practicum.request.dto.ParticipationRequestDto;
+
 import ru.practicum.request.mapper.RequestMapper;
 import ru.practicum.request.model.Request;
 import ru.practicum.request.model.RequestStatus;
@@ -52,7 +53,7 @@ public class EventServiceImpl implements EventService {
     private final UserApi userApi;
     private final CategoryRepository categoryRepository;
     private final LocationRepository locationRepository;
-    private final RequestRepository requestRepository;
+    private final RequestApi requestApi;
     private final EventValidator eventValidator;
     private final RequestStatusRepository requestStatusRepository;
 
