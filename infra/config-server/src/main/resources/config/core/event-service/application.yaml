@@ -3,10 +3,10 @@ server:
 
 spring:
   application:
-    name: main-service
+    name: event-service
   datasource:
     driverClassName: org.postgresql.Driver
-    url: jdbc:postgresql://ewm-db:5432/ewm_main_db
+    url: jdbc:postgresql://ewm-event-db:5432/ewm_event_db
     username: postgres
     password: password
   jpa:

@@ -91,12 +91,12 @@ services:
     networks:
       - explore-network
 
-  ewm-db:
+  ewm-event-db:
     image: postgres:16.1
-    container_name: ewm-db
+    container_name: postgres-event-db
     restart: always
     environment:
-      - POSTGRES_DB=ewm_main_db
+      - POSTGRES_DB=ewm_event_db
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
     ports:
@@ -147,7 +147,7 @@ services:
     build: core/user-service
     container_name: ewm-user-service
     depends_on:
-      ewm-db:
+      ewm-event-db:
         condition: service_healthy
       config-server:
         condition: service_healthy
@@ -156,7 +156,7 @@ services:
     networks:
       - explore-network
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://ewm-db:5432/ewm_main_db
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://ewm-event-db:5432/ewm_event_db
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=password
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
@@ -168,14 +168,14 @@ services:
       retries: 10
 
   ewm-service:
-    build: ./core/main-service
+    build: ./core/event-service
     container_name: ewm-service
     restart: always
     depends_on:
-      - ewm-db
+      - ewm-event-db
       - stats-server
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://ewm-db:5432/ewm_main_db
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://ewm-event-db:5432/ewm_event_db
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=password
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
