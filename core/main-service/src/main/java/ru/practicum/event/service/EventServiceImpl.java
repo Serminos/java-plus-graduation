@@ -16,31 +16,20 @@ import ru.practicum.api.RequestApi;
 import ru.practicum.api.UserApi;
 import ru.practicum.category.model.Category;
 import ru.practicum.category.repository.CategoryRepository;
-import ru.practicum.dto.request.ParticipationRequestDto;
-import ru.practicum.event.dto.*;
+import ru.practicum.dto.event.*;
 import ru.practicum.event.mapper.EventMapper;
 import ru.practicum.event.model.Event;
-import ru.practicum.event.model.EventState;
 import ru.practicum.event.model.Location;
-import ru.practicum.event.model.StateAction;
 import ru.practicum.event.repository.EventRepository;
 import ru.practicum.event.repository.LocationRepository;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.exception.ValidationException;
-
-import ru.practicum.request.mapper.RequestMapper;
-import ru.practicum.request.model.Request;
-import ru.practicum.request.model.RequestStatus;
-import ru.practicum.request.model.RequestStatusEntity;
-import ru.practicum.request.repository.RequestRepository;
-import ru.practicum.request.repository.RequestStatusRepository;
 import ru.practicum.validation.EventValidator;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -55,7 +44,6 @@ public class EventServiceImpl implements EventService {
     private final LocationRepository locationRepository;
     private final RequestApi requestApi;
     private final EventValidator eventValidator;
-    private final RequestStatusRepository requestStatusRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -106,35 +94,6 @@ public class EventServiceImpl implements EventService {
         Event updatedEvent = eventRepository.save(event);
         log.info("Событие успешно обновлено под id {} и дожидается подтверждения", eventId);
         return EventMapper.toFullDto(updatedEvent);
-    }
-
-    @Transactional(readOnly = true)
-    @Override
-    public List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId) {
-        Event event = getEventById(eventId);
-        eventValidator.validateEventOwnership(event, userId);
-
-        return requestRepository.findByEventId(eventId)
-                .stream()
-                .map(RequestMapper::toRequestDto)
-                .collect(Collectors.toList());
-    }
-
-    public Map<String, List<ParticipationRequestDto>> approveRequests(Long userId,
-                                                                      Long eventId,
-                                                                      EventRequestStatusUpdateRequest eventRequestStatusUpdateRequest) {
-        Long initiator = getUserById(userId);
-        Event event = getEventById(eventId);
-        eventValidator.validateInitiator(event, initiator);
-
-        List<Request> requests = getAndValidateRequests(eventId, eventRequestStatusUpdateRequest.getRequestIds());
-        RequestStatus status = eventRequestStatusUpdateRequest.getStatus();
-
-        if (status == RequestStatus.CONFIRMED) {
-            eventValidator.validateParticipantLimit(event);
-        }
-
-        return processStatusSpecificLogic(event, requests, status);
     }
 
     @Transactional(readOnly = true)
@@ -293,13 +252,11 @@ public class EventServiceImpl implements EventService {
                 .orElseThrow(() -> new ValidationException("Указана не правильная ID категории: " + categoryId));
     }
 
-    private Location resolveLocation(Location requestLocation) {
+    private Location resolveLocation(LocationDto requestLocation) {
         Location mayBeExistingLocation = null;
-        if (requestLocation.getId() == null) {
-            mayBeExistingLocation = locationRepository
-                    .findByLatAndLon(requestLocation.getLat(), requestLocation.getLon())
-                    .orElseGet(() -> locationRepository.save(requestLocation));
-        }
+        mayBeExistingLocation = locationRepository
+                .findByLatAndLon(requestLocation.getLat(), requestLocation.getLon())
+                .orElseGet(() -> locationRepository.save(mapLocationDtoToLocation(requestLocation)));
         return mayBeExistingLocation;
     }
 
@@ -307,7 +264,7 @@ public class EventServiceImpl implements EventService {
         Optional.ofNullable(update.getAnnotation()).ifPresent(event::setAnnotation);
         Optional.ofNullable(update.getDescription()).ifPresent(event::setDescription);
         Optional.ofNullable(update.getEventDate()).ifPresent(event::setEventDate);
-        Optional.ofNullable(update.getLocation()).ifPresent(event::setLocation);
+        Optional.ofNullable(mapLocationDtoToLocation(update.getLocation())).ifPresent(event::setLocation);
         Optional.ofNullable(update.getPaid()).ifPresent(event::setPaid);
         Optional.ofNullable(update.getParticipantLimit()).ifPresent(event::setParticipantLimit);
         Optional.ofNullable(update.getRequestModeration()).ifPresent(event::setRequestModeration);
@@ -319,6 +276,18 @@ public class EventServiceImpl implements EventService {
                 .ifPresent(event::setCategory);
         Optional.ofNullable(update.getStateAction())
                 .ifPresent(action -> handleStateUpdateEventAdminRequest(action, event));
+    }
+
+    private Location mapLocationDtoToLocation(LocationDto locationDto) {
+        if (locationDto == null) return null;
+        return new Location(null, locationDto.getLat(), locationDto.getLon());
+    }
+
+    @Override
+    public EventFullDto increaseConfirmed(Long eventId, Integer quantity) {
+        Event event = getEventById(eventId);
+        event.setConfirmedRequests(quantity);
+        return EventMapper.toFullDto(eventRepository.save(event));
     }
 
     private void applyUserUpdates(Event event, UpdateEventUserRequest update) {
@@ -348,70 +317,6 @@ public class EventServiceImpl implements EventService {
             case SEND_TO_REVIEW -> event.setState(EventState.PENDING);
             case CANCEL_REVIEW -> event.setState(EventState.CANCELED);
         }
-    }
-
-    private Map<String, List<ParticipationRequestDto>> processStatusSpecificLogic(Event event,
-                                                                                  List<Request> requests,
-                                                                                  RequestStatus status) {
-        if (status == RequestStatus.REJECTED) {
-            return processRejection(requests);
-        } else {
-            return processConfirmation(event, requests);
-        }
-    }
-
-    private List<Request> getAndValidateRequests(Long eventId, List<Long> requestIds) {
-        List<Request> requests = requestRepository.findRequestByIdIn(requestIds);
-        eventValidator.validateRequestsBelongToEvent(requests, eventId);
-        return requests;
-    }
-
-    private Map<String, List<ParticipationRequestDto>> processRejection(List<Request> requests) {
-        eventValidator.validateNoConfirmedRequests(requests);
-        updateRequestStatuses(requests, RequestStatus.REJECTED);
-        List<ParticipationRequestDto> rejectedRequests = requestRepository.saveAll(requests)
-                .stream()
-                .map(RequestMapper::toRequestDto)
-                .toList();
-
-        return Map.of("rejectedRequests", rejectedRequests);
-    }
-
-    private void updateRequestStatuses(List<Request> requests, RequestStatus status) {
-        RequestStatusEntity requestStatusEntity =
-                requestStatusRepository.findByName(status)
-                        .orElseThrow(() -> new IllegalArgumentException("Не верный статус"));
-        requests.forEach(request -> request.setStatus(requestStatusEntity));
-    }
-
-    private Map<String, List<ParticipationRequestDto>> processConfirmation(Event event, List<Request> requests) {
-        eventValidator.validateAllRequestsPending(requests);
-
-        int availableSlots = event.getParticipantLimit() - event.getConfirmedRequests();
-        List<Request> confirmed = requests.stream().limit(availableSlots).toList();
-        List<Request> rejected = requests.stream().skip(availableSlots).toList();
-
-        updateRequestStatuses(confirmed, RequestStatus.CONFIRMED);
-        updateRequestStatuses(rejected, RequestStatus.REJECTED);
-
-        requestRepository.saveAll(requests);
-        updateEventConfirmedRequests(event, confirmed.size());
-
-        return Map.of(
-                "confirmedRequests", mapToParticipationRequestDtoList(confirmed),
-                "rejectedRequests", mapToParticipationRequestDtoList(rejected)
-        );
-    }
-
-    private void updateEventConfirmedRequests(Event event, int newConfirmations) {
-        event.setConfirmedRequests(event.getConfirmedRequests() + newConfirmations);
-        eventRepository.save(event);
-    }
-
-    private List<ParticipationRequestDto> mapToParticipationRequestDtoList(List<Request> requests) {
-        return requests.stream()
-                .map(RequestMapper::toRequestDto)
-                .toList();
     }
 
 }

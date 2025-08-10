@@ -2,7 +2,6 @@ package ru.practicum.request.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import ru.practicum.event.model.Event;
 
 import java.time.LocalDateTime;
 
@@ -23,9 +22,8 @@ public class Request {
     @Column(name = "requester_id")
     private Long requesterId;
 
-    @ManyToOne
-    @JoinColumn(name = "event_id")
-    private Event event;
+    @Column(name = "event_id")
+    private Long eventId;
 
     @ManyToOne
     @JoinColumn(name = "status_id", nullable = false)

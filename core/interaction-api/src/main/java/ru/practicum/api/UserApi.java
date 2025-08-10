@@ -9,7 +9,7 @@ import ru.practicum.dto.user.UserDto;
 
 import java.util.List;
 
-@FeignClient(name = "user-service", path = "/admin/users")
+@FeignClient(name = "user-service", path = "/admin/users", fallbackFactory = UserApiFallback.class)
 public interface UserApi {
     @PostMapping
     UserDto createUser(@Valid @RequestBody UserDto userDto);

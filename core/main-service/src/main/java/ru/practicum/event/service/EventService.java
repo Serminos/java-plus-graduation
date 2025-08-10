@@ -2,11 +2,9 @@ package ru.practicum.event.service;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Pageable;
-import ru.practicum.dto.request.ParticipationRequestDto;
-import ru.practicum.event.dto.*;
+import ru.practicum.dto.event.*;
 
 import java.util.List;
-import java.util.Map;
 
 public interface EventService {
 
@@ -23,20 +21,16 @@ public interface EventService {
                                  Long eventId,
                                  UpdateEventUserRequest updateEventUserRequest);
 
-    List<ParticipationRequestDto> getEventRequests(Long userId,
-                                                   Long eventId);
-
-    Map<String, List<ParticipationRequestDto>> approveRequests(Long userId,
-                                                               Long eventId,
-                                                               EventRequestStatusUpdateRequest eventRequestStatusUpdateRequest);
-
     List<EventFullDto> searchEventsByAdmin(SearchAdminEventsParamDto searchAdminEventsParamDto);
 
     EventFullDto updateEventByAdmin(Long eventId,
-                                     UpdateEventAdminRequest updateEventAdminRequest);
+                                    UpdateEventAdminRequest updateEventAdminRequest);
 
     List<EventShortDto> searchPublicEvents(SearchPublicEventsParamDto searchPublicEventsParamDto);
 
     EventFullDto getPublicEvent(Long eventId,
                                 HttpServletRequest request);
+
+    EventFullDto increaseConfirmed(Long eventId, Integer quantity);
+
 }

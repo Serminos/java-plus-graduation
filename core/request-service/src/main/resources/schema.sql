@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS request_statuses (
 CREATE TABLE IF NOT EXISTS participation_requests (
     id BIGSERIAL PRIMARY KEY,
     requester_id BIGINT,
-    event_id BIGINT NOT NULL REFERENCES events(id),
+    event_id BIGINT NOT NULL,
     status_id INT NOT NULL REFERENCES request_statuses(id),
     created TIMESTAMP NOT NULL DEFAULT now(),
 

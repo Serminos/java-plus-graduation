@@ -1,12 +1,10 @@
 package ru.practicum.event.mapper;
 
-import ru.practicum.category.dto.CategoryDto;
 import ru.practicum.category.model.Category;
-import ru.practicum.event.dto.EventFullDto;
-import ru.practicum.event.dto.EventShortDto;
-import ru.practicum.event.dto.NewEventDto;
+import ru.practicum.dto.category.CategoryDto;
+import ru.practicum.dto.event.*;
 import ru.practicum.event.model.Event;
-import ru.practicum.event.model.EventState;
+import ru.practicum.event.model.Location;
 
 import java.time.LocalDateTime;
 
@@ -22,7 +20,7 @@ public class EventMapper {
                 .category(category)
                 .description(newEventDto.getDescription())
                 .eventDate(newEventDto.getEventDate())
-                .location(newEventDto.getLocation())
+                .location(mapLocationDtoToLocation(newEventDto.getLocation()))
                 .paid(newEventDto.getPaid())
                 .participantLimit(newEventDto.getParticipantLimit())
                 .requestModeration(newEventDto.getRequestModeration())
@@ -61,7 +59,7 @@ public class EventMapper {
                 .eventDate(event.getEventDate())
                 .id(event.getId())
                 .initiator(event.getInitiatorId())
-                .location(event.getLocation())
+                .location(mapLocationToLocationDto(event.getLocation()))
                 .paid(event.getPaid())
                 .participantLimit(event.getParticipantLimit())
                 .publishedOn(event.getPublishedOn())
@@ -70,5 +68,15 @@ public class EventMapper {
                 .title(event.getTitle())
                 .views(0L)
                 .build();
+    }
+
+    private static Location mapLocationDtoToLocation(LocationDto locationDto) {
+        Location location = new Location(null, locationDto.getLat(), locationDto.getLon());
+        return  location;
+    }
+
+    private static LocationDto mapLocationToLocationDto(Location location) {
+        LocationDto locationDto = new LocationDto(location.getLat(), location.getLon());
+        return  locationDto;
     }
 }

@@ -12,10 +12,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.util.ObjectUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.event.dto.EventFullDto;
-import ru.practicum.event.dto.SearchAdminEventsParamDto;
-import ru.practicum.event.dto.UpdateEventAdminRequest;
-import ru.practicum.event.model.EventState;
+import ru.practicum.dto.event.EventFullDto;
+import ru.practicum.dto.event.EventState;
+import ru.practicum.dto.event.SearchAdminEventsParamDto;
+import ru.practicum.dto.event.UpdateEventAdminRequest;
 import ru.practicum.event.service.EventService;
 import ru.practicum.exception.ValidationException;
 
@@ -77,6 +77,12 @@ public class AdminEventController {
         return ResponseEntity.ok(
                 eventService.updateEventByAdmin(eventId, updateEventAdminRequest)
         );
+    }
+
+    @PostMapping("/{eventId}")
+    public EventFullDto increaseConfirmed(@PathVariable Long eventId, @RequestParam Integer quantity) {
+        log.info("Increasing confirmed in event {}", eventId);
+        return eventService.increaseConfirmed(eventId, quantity);
     }
 
     private void validateTimeRange(LocalDateTime start, LocalDateTime end) {

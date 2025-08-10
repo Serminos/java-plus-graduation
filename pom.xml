@@ -16,7 +16,6 @@
 		<module>infra</module>
 		<module>stats</module>
 		<module>core</module>
-        <module>core/request-service</module>
     </modules>
 
 

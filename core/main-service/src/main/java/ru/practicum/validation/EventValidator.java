@@ -4,17 +4,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.practicum.api.UserApi;
-import ru.practicum.event.dto.UpdateEventUserRequest;
+import ru.practicum.dto.event.EventState;
+import ru.practicum.dto.event.UpdateEventUserRequest;
 import ru.practicum.event.model.Event;
-import ru.practicum.event.model.EventState;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.exception.ValidationException;
-import ru.practicum.request.model.Request;
-import ru.practicum.request.model.RequestStatus;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Objects;
 
 @Slf4j
@@ -27,46 +24,6 @@ public class EventValidator {
         if (userApi.getUserById(userId) == null) {
             log.error("Пользователя с id {} не найден", userId);
             throw new NotFoundException("Пользователя с id не найден: " + userId);
-        }
-    }
-
-    public void validateInitiator(Event event, Long initiator) {
-        if (!event.getInitiatorId().equals(initiator)) {
-            throw new ValidationException("У этого события другой инициатор");
-        }
-    }
-
-
-    public void validateRequestsBelongToEvent(List<Request> requests, Long eventId) {
-        boolean allMatch = requests.stream()
-                .allMatch(request -> request.getEvent().getId().equals(eventId));
-        if (!allMatch) {
-            throw new ValidationException("Неверно передан список запросов");
-        }
-    }
-
-    public void validateParticipantLimit(Event event) {
-        if (event.getParticipantLimit() != 0 &&
-                event.getConfirmedRequests() >= event.getParticipantLimit()) {
-            throw new ConflictException("Лимит заявок на участие в событии исчерпан");
-        }
-    }
-
-    public void validateNoConfirmedRequests(List<Request> requests) {
-        if (requests.stream().anyMatch(r -> r.getStatus().getName() == RequestStatus.CONFIRMED)) {
-            throw new ConflictException("Нельзя отменить уже подтвержденные заявки");
-        }
-    }
-
-    public void validateAllRequestsPending(List<Request> requests) {
-        if (requests.stream().anyMatch(r -> r.getStatus().getName() != RequestStatus.PENDING)) {
-            throw new ConflictException("Все заявки должны быть в статусе ожидания");
-        }
-    }
-
-    public void validateEventOwnership(Event event, Long userId) {
-        if (!event.getInitiatorId().equals(userId)) {
-            throw new ValidationException("Только пользователь создавший событие может получить его полное описание");
         }
     }
 
@@ -108,6 +65,12 @@ public class EventValidator {
         if (currentState == EventState.PUBLISHED || currentState == EventState.CANCELED) {
             throw new ConflictException("Запрещено редактирование в статусах: " +
                     String.join(", ", EventState.PUBLISHED.name(), EventState.CANCELED.name()));
+        }
+    }
+
+    public void validateEventOwnership(Event event, Long userId) {
+        if (!event.getInitiatorId().equals(userId)) {
+            throw new ValidationException("Только пользователь создавший событие может получить его полное описание");
         }
     }
 

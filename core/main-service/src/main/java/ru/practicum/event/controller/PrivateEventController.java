@@ -12,15 +12,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.dto.request.ParticipationRequestDto;
-import ru.practicum.event.dto.EventFullDto;
-import ru.practicum.event.dto.EventShortDto;
-import ru.practicum.event.dto.NewEventDto;
-import ru.practicum.event.dto.UpdateEventUserRequest;
+import ru.practicum.dto.event.EventFullDto;
+import ru.practicum.dto.event.EventShortDto;
+import ru.practicum.dto.event.NewEventDto;
+import ru.practicum.dto.event.UpdateEventUserRequest;
 import ru.practicum.event.service.EventService;
 
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Validated
@@ -70,25 +68,6 @@ public class PrivateEventController {
             @RequestBody @Valid UpdateEventUserRequest updateEventUserRequest) {
         log.info("Запрос на обновление события с id = {} для пользователя с ID {}: {}", eventId, userId, updateEventUserRequest);
         return ResponseEntity.ok(eventService.updateUserEvent(userId, eventId, updateEventUserRequest));
-    }
-
-    @GetMapping("/{eventId}/requests")
-    public ResponseEntity<List<ParticipationRequestDto>> getEventRequests(
-            @PathVariable @Positive Long userId,
-            @PathVariable @Positive Long eventId) {
-        log.info("Запрос на получение всех заявок на событие с id = {} для пользователя с ID {}", eventId, userId);
-        return ResponseEntity.ok(eventService.getEventRequests(userId, eventId));
-    }
-
-    @PatchMapping("/{eventId}/requests")
-    public ResponseEntity<Map<String, List<ParticipationRequestDto>>> approveRequests(
-            @PathVariable @Positive Long userId,
-            @PathVariable @Positive Long eventId,
-            @RequestBody @Valid EventRequestStatusUpdateRequest eventRequestStatusUpdateRequest) {
-        log.info("Запрос на изменение статуса переданных заявок на событие с id = {} для пользователя с ID {}: {}",
-                eventId, userId, eventRequestStatusUpdateRequest);
-
-        return ResponseEntity.ok(eventService.approveRequests(userId, eventId, eventRequestStatusUpdateRequest));
     }
 
     private PageRequest createPageRequest(int from, int size) {

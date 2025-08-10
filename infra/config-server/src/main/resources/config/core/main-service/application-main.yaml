@@ -23,3 +23,18 @@ spring:
 discovery:
   services:
     stats-server-id: stats-server
+
+feign:
+  circuitbreaker:
+    enabled: true
+
+resilience4j.circuitbreaker:
+  configs:
+    default:
+      slidingWindowSize: 10
+      failureRateThreshold: 50
+      waitDurationInOpenState: 10000
+      permittedNumberOfCallsInHalfOpenState: 1
+      slidingWindowType: COUNT_BASED
+      minimumNumberOfCalls: 1
+      automaticTransitionFromOpenToHalfOpenEnabled: true
