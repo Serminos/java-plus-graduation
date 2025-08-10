@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
-@SpringBootApplication(scanBasePackages = "ru.practicum.comment")
+@SpringBootApplication(scanBasePackages = "ru.practicum")
 @EnableDiscoveryClient
 @ConfigurationPropertiesScan
 @EnableFeignClients(basePackages = "ru.practicum")

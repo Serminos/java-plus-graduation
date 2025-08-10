@@ -9,8 +9,8 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 @SpringBootApplication(scanBasePackages = "ru.practicum")
 @EnableDiscoveryClient
 @EnableFeignClients(basePackages = "ru.practicum")
-public class MainService {
+public class EventService {
     public static void main(String[] args) {
-        SpringApplication.run(MainService.class,args);
+        SpringApplication.run(EventService.class,args);
     }
 }
