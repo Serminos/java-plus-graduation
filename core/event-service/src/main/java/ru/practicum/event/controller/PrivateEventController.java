@@ -54,11 +54,11 @@ public class PrivateEventController {
     }
 
     @GetMapping("/{eventId}")
-    public ResponseEntity<EventFullDto> getEventById(
+    public ResponseEntity<EventFullDto> getEventByIdAndInitiator(
             @PathVariable @Positive Long userId,
             @PathVariable @Positive Long eventId) {
         log.info("Запрос на получение события с id = {} для пользователя с ID {}", eventId, userId);
-        return ResponseEntity.ok(eventService.getUserEventById(userId, eventId));
+        return ResponseEntity.ok(eventService.getEventByIdAndInitiator(userId, eventId));
     }
 
     @PatchMapping("/{eventId}")

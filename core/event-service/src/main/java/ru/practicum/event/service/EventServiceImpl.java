@@ -68,16 +68,26 @@ public class EventServiceImpl implements EventService {
 
         Event savedEvent = eventRepository.save(event);
         log.info("Событие успешно добавлено под id {} со статусом {} и ожидается подтверждение",
-                initiator, event.getState());
+                savedEvent.getId(), event.getState());
         return EventMapper.toFullDto(savedEvent);
     }
 
     @Transactional(readOnly = true)
     @Override
-    public EventFullDto getUserEventById(Long userId,
-                                         Long eventId) {
+    public EventFullDto getEventByIdAndInitiator(Long userId,
+                                                 Long eventId) {
         Event event = getEventById(eventId);
         eventValidator.validateEventOwnership(event, userId);
+        return EventMapper.toFullDto(event);
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public EventFullDto getEventFullDtoById(Long eventId) {
+        Event event = getEventById(eventId);
+        log.info("Найдено событие {}", event);
+        EventFullDto eventFullDto = EventMapper.toFullDto(event);
+        log.info("Найдено событие {}", eventFullDto);
         return EventMapper.toFullDto(event);
     }
 
@@ -105,7 +115,7 @@ public class EventServiceImpl implements EventService {
 
                     // Фильтр по пользователям
                     if (searchParams.getUsers() != null && !searchParams.getUsers().isEmpty()) {
-                        predicates.add(root.get("initiator").get("id").in(searchParams.getUsers()));
+                        predicates.add(root.get("initiatorId").in(searchParams.getUsers()));
                     }
 
                     // Фильтр по состояниям
@@ -237,6 +247,7 @@ public class EventServiceImpl implements EventService {
         try {
             return userApi.getUserById(userId).getId();
         } catch (FeignException e) {
+            log.error(e.toString());
             new NotFoundException("Не найден пользователя с ID: " + userId);
             return null;
         }

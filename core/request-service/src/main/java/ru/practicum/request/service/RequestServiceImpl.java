@@ -50,7 +50,8 @@ public class RequestServiceImpl implements RequestService {
     public ParticipationRequestDto createParticipationRequest(Long userId, Long eventId) {
         final Long initiator = getUserById(userId);
         final EventFullDto eventFullDto = getEventById(eventId);
-
+        log.info("Найдено событие: {}",
+                eventFullDto);
         requestValidator.validateRequestCreation(initiator, eventFullDto);
 
         final Request request = buildNewRequest(initiator, eventFullDto);
@@ -71,7 +72,7 @@ public class RequestServiceImpl implements RequestService {
 
         requestValidator.validateRequestOwnership(initiator, request);
         updateRequestStatus(request, RequestStatus.CANCELED);
-        EventFullDto eventFullDto = eventApi.getEventById(request.getEventId());
+        EventFullDto eventFullDto = eventApi.getEventFullDtoById(request.getEventId());
         if (request.getStatus().getName() == RequestStatus.CONFIRMED) {
             adjustEventConfirmedRequests(eventFullDto, -1);
         }
@@ -91,7 +92,7 @@ public class RequestServiceImpl implements RequestService {
 
     private EventFullDto getEventById(Long eventId) {
         try {
-            return eventApi.getEventById(eventId);
+            return eventApi.getEventFullDtoById(eventId);
         } catch (FeignException e) {
             new NotFoundException("Не найдено событие с ID: " + eventId);
             return null;

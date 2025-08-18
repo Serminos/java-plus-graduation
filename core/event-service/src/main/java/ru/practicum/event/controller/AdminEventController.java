@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.ResponseEntity;
 import org.springframework.util.ObjectUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -34,7 +33,7 @@ public class AdminEventController {
     private final EventService eventService;
 
     @GetMapping
-    public ResponseEntity<List<EventFullDto>> searchEventsByAdmin(
+    public List<EventFullDto> searchEventsByAdmin(
             @RequestParam(required = false) List<Long> users,
             @RequestParam(required = false) List<String> stateStrings,
             @RequestParam(required = false) List<Long> categoriesIds,
@@ -63,26 +62,31 @@ public class AdminEventController {
                         .rangeEnd(rangeEnd)
                         .pageRequest(pageRequest)
                         .build();
-        return ResponseEntity.ok(eventService.searchEventsByAdmin(searchAdminEventsParamDto)
-        );
+        return eventService.searchEventsByAdmin(searchAdminEventsParamDto);
     }
 
     @PatchMapping("/{eventId}")
-    public ResponseEntity<EventFullDto> updateEventByAdmin(
+    public EventFullDto updateEventByAdmin(
             @PathVariable @Positive Long eventId,
             @RequestBody @Valid UpdateEventAdminRequest updateEventAdminRequest) {
         log.info("Редактирование данных события и его статуса (отклонение/публикация) id = {} и изменения: {}",
                 eventId, updateEventAdminRequest);
 
-        return ResponseEntity.ok(
-                eventService.updateEventByAdmin(eventId, updateEventAdminRequest)
-        );
+        return eventService.updateEventByAdmin(eventId, updateEventAdminRequest);
     }
 
     @PostMapping("/{eventId}")
     public EventFullDto increaseConfirmed(@PathVariable Long eventId, @RequestParam Integer quantity) {
         log.info("Increasing confirmed in event {}", eventId);
         return eventService.increaseConfirmed(eventId, quantity);
+    }
+
+
+    @GetMapping("/{eventId}")
+    public EventFullDto getEventFullDtoById(
+            @PathVariable @Positive Long eventId) {
+        log.info("Запрос на получение события с id = {} ", eventId);
+        return eventService.getEventFullDtoById(eventId);
     }
 
     private void validateTimeRange(LocalDateTime start, LocalDateTime end) {

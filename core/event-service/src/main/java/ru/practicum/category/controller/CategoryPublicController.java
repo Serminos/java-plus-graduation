@@ -1,13 +1,14 @@
 package ru.practicum.category.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.category.service.CategoryService;
 import ru.practicum.dto.category.CategoryDto;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/categories")
 @RequiredArgsConstructor
@@ -15,18 +16,20 @@ public class CategoryPublicController {
 
     private final CategoryService categoryService;
 
-    @GetMapping("/{id}")
-    public ResponseEntity<CategoryDto> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(categoryService.getById(id));
+    @GetMapping("/{catId}")
+    public CategoryDto getById(@PathVariable Long catId) {
+        log.info("GET запрос на получение категории(public) с id {}", catId);
+        return categoryService.getById(catId);
     }
 
     @GetMapping
-    public ResponseEntity<List<CategoryDto>> getAllPaged(
+    public List<CategoryDto> getAllPaged(
             @RequestParam(defaultValue = "0") int from,
             @RequestParam(defaultValue = "10") int size
     ) {
-        List<CategoryDto> categories = categoryService.getAllPaged(from, size);
-        return ResponseEntity.ok(categories);
+        log.info("GET запрос на получение всех категорий(public) с параметрами from={}, size={}",
+                from, size);
+        return categoryService.getAllPaged(from, size);
     }
 
 }

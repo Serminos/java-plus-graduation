@@ -31,8 +31,8 @@ public class RequestValidator {
         checkEventCapacity(event);
     }
 
-    private void checkEventState(EventFullDto event) {
-        if (!event.getState().name().equals(EventState.PUBLISHED.name())) {
+    private void checkEventState(EventFullDto eventFullDto) {
+        if (!eventFullDto.getState().name().equals(EventState.PUBLISHED.name())) {
             throw new ConflictException("Нельзя подавать заявку на неопубликованное мероприятие");
         }
     }

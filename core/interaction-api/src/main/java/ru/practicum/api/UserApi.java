@@ -15,13 +15,16 @@ public interface UserApi {
     UserDto createUser(@Valid @RequestBody UserDto userDto);
 
     @GetMapping
-    List<UserDto> getAllUsers(
+    List<UserDto> getAllUsers(@RequestParam(required = false) List<Long> ids,
             @RequestParam(name = "from", defaultValue = "0") @Min(0) int from,
             @RequestParam(name = "size", defaultValue = "10") @Min(1) int size
     );
 
-    @GetMapping(params = "ids")
-    UserDto getUserById(@RequestParam Long ids);
+    @GetMapping("/{userId}")
+    UserDto getUserById(@PathVariable Long userId);
+
+    @GetMapping("/batch")
+    List<UserDto> getUsersByIds(@RequestBody List<Long> userIds);
 
     @DeleteMapping("/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

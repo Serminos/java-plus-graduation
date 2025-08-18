@@ -14,8 +14,11 @@ public interface EventService {
     EventFullDto createEvent(Long userId,
                              NewEventDto newEventDto);
 
-    EventFullDto getUserEventById(Long userId,
-                                  Long eventId);
+    EventFullDto getEventByIdAndInitiator(Long userId,
+                                          Long eventId);
+
+    EventFullDto getEventFullDtoById(Long eventId);
+
 
     EventFullDto updateUserEvent(Long userId,
                                  Long eventId,

@@ -7,15 +7,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import ru.practicum.dto.event.EventFullDto;
 
-@FeignClient(name = "event-service", path = "/admin/events", fallbackFactory = EventApiFallback.class)
+@FeignClient(name = "event-service", fallbackFactory = EventApiFallback.class)
 public interface EventApi {
-    @GetMapping("/{id}")
-    EventFullDto getEventById(@PathVariable Long id);
+    @GetMapping("/admin/events/{eventId}")
+    EventFullDto getEventFullDtoById(@PathVariable Long eventId);
 
-    @GetMapping("/{eventId}/initiator/{userId}")
-    EventFullDto getEventByIdAndInitiator(@PathVariable Long eventId,
-                                          @PathVariable Long userId);
+    @GetMapping("/users/{userId}/events/{eventId}")
+    EventFullDto getEventByIdAndInitiator(@PathVariable Long userId, @PathVariable Long eventId);
 
-    @PostMapping("/{eventId}")
-    EventFullDto increaseConfirmed(@PathVariable Long eventId, @RequestParam Integer quantity);
+    @PostMapping("/admin/events/{eventId}")
+    void increaseConfirmed(@PathVariable Long eventId, @RequestParam Integer quantity);
 }

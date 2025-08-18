@@ -134,7 +134,7 @@ public class CommentServiceImpl implements CommentService {
 
     private EventFullDto getEventById(Long eventId) {
         try {
-            return eventApi.getEventById(eventId);
+            return eventApi.getEventFullDtoById(eventId);
         } catch (FeignException e) {
             new NotFoundException("Не найдено событие с ID: " + eventId);
             return null;
