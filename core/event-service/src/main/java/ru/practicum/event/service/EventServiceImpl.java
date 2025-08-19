@@ -85,9 +85,6 @@ public class EventServiceImpl implements EventService {
     @Override
     public EventFullDto getEventFullDtoById(Long eventId) {
         Event event = getEventById(eventId);
-        log.info("Найдено событие {}", event);
-        EventFullDto eventFullDto = EventMapper.toFullDto(event);
-        log.info("Найдено событие {}", eventFullDto);
         return EventMapper.toFullDto(event);
     }
 
@@ -295,10 +292,9 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public EventFullDto increaseConfirmed(Long eventId, Integer quantity) {
-        Event event = getEventById(eventId);
-        event.setConfirmedRequests(quantity);
-        return EventMapper.toFullDto(eventRepository.save(event));
+    public EventFullDto increaseConfirmed(Long eventId, Integer delta) {
+        eventRepository.incrementConfirmedRequests(eventId, delta);
+        return EventMapper.toFullDto(getEventById(eventId));
     }
 
     private void applyUserUpdates(Event event, UpdateEventUserRequest update) {

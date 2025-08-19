@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.comment.service.CommentService;
+import ru.practicum.dto.comment.CommentFilter;
 import ru.practicum.dto.comment.CommentRequestDto;
 import ru.practicum.dto.comment.CommentResponseDto;
 
@@ -27,12 +28,14 @@ public class PrivateCommentController {
 
 
     @GetMapping("/events/{eventId}/comments")
-    public ResponseEntity<List<CommentResponseDto>> findAll(@PathVariable @Positive Long userId,
+    public ResponseEntity<List<CommentResponseDto>> findAllByAuthorAndEvent(@PathVariable @Positive Long userId,
                                                             @PathVariable @Positive Long eventId,
                                                             @RequestParam(defaultValue = "0") int from,
                                                             @RequestParam(defaultValue = "10") int size) {
         log.info("Запрос на получение всех комментариев пользователя с id = {}", userId);
-        return ResponseEntity.ok(commentService.findAll(userId, eventId, createPageRequest(from, size)));
+        CommentFilter filter = new CommentFilter(userId, eventId);
+        PageRequest pageRequest = createPageRequest(from, size);
+        return ResponseEntity.ok(commentService.findAllByAuthorAndEvent(filter, pageRequest));
     }
 
     @PostMapping("/events/{eventId}/comments")

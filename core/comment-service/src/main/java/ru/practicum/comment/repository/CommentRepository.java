@@ -13,7 +13,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     void deleteByEventId(Long eventId);
 
     List<Comment> findByEventId(Long eventId,
-                              PageRequest pageRequest);
+                                PageRequest pageRequest);
 
     List<Comment> findByAuthorAndEventId(Long author,
                                          Long eventId,

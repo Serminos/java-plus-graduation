@@ -1,6 +1,7 @@
 package ru.practicum.comment.service;
 
 import org.springframework.data.domain.PageRequest;
+import ru.practicum.dto.comment.CommentFilter;
 import ru.practicum.dto.comment.CommentRequestDto;
 import ru.practicum.dto.comment.CommentResponseDto;
 
@@ -10,9 +11,8 @@ import java.util.List;
 public interface CommentService {
 
 
-    List<CommentResponseDto> findAll(Long userId,
-                                     Long eventId,
-                                     PageRequest pageRequest);
+    List<CommentResponseDto> findAllByAuthorAndEvent(CommentFilter filter,
+                                                     PageRequest pageRequest);
 
     CommentResponseDto save(CommentRequestDto commentRequestDto,
                             Long userId,

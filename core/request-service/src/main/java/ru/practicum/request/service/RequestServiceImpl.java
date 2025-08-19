@@ -149,7 +149,7 @@ public class RequestServiceImpl implements RequestService {
     }
 
     private void adjustEventConfirmedRequests(EventFullDto eventFullDto, int delta) {
-        eventApi.increaseConfirmed(eventFullDto.getId(), eventFullDto.getConfirmedRequests() + delta);
+        eventApi.increaseConfirmed(eventFullDto.getId(), delta);
     }
 
     private void updateRequestStatus(Request request, RequestStatus newStatus) {
@@ -243,7 +243,7 @@ public class RequestServiceImpl implements RequestService {
     }
 
     private void updateEventConfirmedRequests(EventFullDto eventFullDto, int newConfirmations) {
-        eventApi.increaseConfirmed(eventFullDto.getId(), eventFullDto.getConfirmedRequests() + newConfirmations);
+        eventApi.increaseConfirmed(eventFullDto.getId(), newConfirmations);
 
     }
 

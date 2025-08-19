@@ -13,6 +13,7 @@ import ru.practicum.api.UserApi;
 import ru.practicum.comment.mapper.CommentMapper;
 import ru.practicum.comment.model.Comment;
 import ru.practicum.comment.repository.CommentRepository;
+import ru.practicum.dto.comment.CommentFilter;
 import ru.practicum.dto.comment.CommentRequestDto;
 import ru.practicum.dto.comment.CommentResponseDto;
 import ru.practicum.dto.event.EventFullDto;
@@ -26,7 +27,6 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@Transactional
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class CommentServiceImpl implements CommentService {
 
@@ -37,60 +37,76 @@ public class CommentServiceImpl implements CommentService {
     EventApi eventApi;
 
     @Override
-    public List<CommentResponseDto> findAll(Long userId,
-                                            Long eventId,
+    public List<CommentResponseDto> findAllByAuthorAndEvent(CommentFilter filter,
                                             PageRequest pageRequest) {
-        Long initiator = getUserById(userId);
-        EventFullDto eventFullDto = getEventById(eventId);
-        List<Comment> comments = commentRepository.findByAuthorAndEventId(initiator, eventFullDto.getId(), pageRequest);
+        Long initiator = getUserById(filter.authorId());
+        EventFullDto eventFullDto = getEventById(filter.eventId());
+        return findCommentsByAuthorAndEvent(initiator, eventFullDto.getId(), pageRequest);
+    }
+
+    @Transactional(readOnly = true)
+    private List<CommentResponseDto> findCommentsByAuthorAndEvent(Long authorId, Long eventId, PageRequest pageRequest) {
+        List<Comment> comments = commentRepository.findByAuthorAndEventId(authorId, eventId, pageRequest);
         return comments.stream().map(CommentMapper::toCommentResponseDto).toList();
     }
 
     @Override
-    public CommentResponseDto save(CommentRequestDto commentRequestDto,
-                                   Long userId,
-                                   Long eventId) {
+    public CommentResponseDto save(CommentRequestDto commentRequestDto, Long userId, Long eventId) {
         Long initiator = getUserById(userId);
         EventFullDto event = getEventById(eventId);
 
         if (!event.getState().equals(EventState.PUBLISHED)) {
-            throw new ConflictException("Нельзя написать комментарий к событию которое еще не было опубликованно");
+            throw new ConflictException("Нельзя написать комментарий к неопубликованному событию");
         }
-        Comment comment = commentRepository.save(CommentMapper.toComment(commentRequestDto, initiator, event.getId()));
+
+        return saveComment(commentRequestDto, initiator, event.getId());
+    }
+
+    @Transactional
+    private CommentResponseDto saveComment(CommentRequestDto dto, Long author, Long eventId) {
+        Comment comment = commentRepository.save(CommentMapper.toComment(dto, author, eventId));
         return CommentMapper.toCommentResponseDto(comment);
     }
 
     @Override
-    public CommentResponseDto update(CommentRequestDto commentRequestDto,
-                                     Long userId,
-                                     Long commentId) {
-        Comment oldComment = getCommentById(commentId);
+    public CommentResponseDto update(CommentRequestDto commentRequestDto, Long userId, Long commentId) {
         getUserById(userId);
+        return updateComment(commentRequestDto, userId, commentId);
+    }
 
-        if (!oldComment.getAuthor().equals(userId)) {
-            throw new ConflictException("Редактировать комментарии разрешено только его автору");
+    @Transactional
+    private CommentResponseDto updateComment(CommentRequestDto dto, Long userId, Long commentId) {
+        Comment comment = getCommentById(commentId);
+
+        if (!comment.getAuthor().equals(userId)) {
+            throw new ConflictException("Редактирование разрешено только автору");
         }
-        oldComment.setText(commentRequestDto.getText());
-        Comment comment = commentRepository.save(oldComment);
+
+        comment.setText(dto.getText());
         return CommentMapper.toCommentResponseDto(comment);
     }
 
     @Override
     public void delete(Long userId,
                        Long commentId) {
-        Comment comment = getCommentById(commentId);
         getUserById(userId);
+        Comment comment = getCommentById(commentId);
         EventFullDto eventFullDto = getEventById(comment.getEventId());
 
-        if (!comment.getAuthor().equals(userId) &&
-                !comment.getAuthor().equals(eventFullDto.getInitiator())) {
+        if (!userId.equals(comment.getAuthor()) &&
+                !userId.equals(eventFullDto.getInitiator())) {
             throw new ConflictException("Удалять комментарии разрешено только его автору или инициатору мероприятия");
         }
+        deleteInTransaction(commentId);
+    }
+
+    @Transactional
+    void deleteInTransaction(Long commentId) {
         commentRepository.deleteById(commentId);
     }
 
-
     @Override
+    @Transactional
     public void deleteByIds(final List<Long> ids) {
         List<Comment> events = commentRepository.findAllById(ids);
         if (ids.size() != events.size()) {
@@ -103,7 +119,13 @@ public class CommentServiceImpl implements CommentService {
     @Override
     public void deleteByEventId(Long eventId) {
         EventFullDto eventFullDto = getEventById(eventId);
-        commentRepository.deleteByEventId(eventFullDto.getId());
+        deleteCommentsByEvent(eventFullDto.getId());
+        log.info("Все комментарии у события с id = {} успешно удалены", eventId);
+    }
+
+    @Transactional
+    void deleteCommentsByEvent(Long eventId) {
+        commentRepository.deleteByEventId(eventId);
         log.info("Все комментарии у события с id = {} успешно удалены", eventId);
     }
 
@@ -111,23 +133,27 @@ public class CommentServiceImpl implements CommentService {
     public List<CommentResponseDto> findByEvent(Long eventId,
                                                 PageRequest pageRequest) {
         EventFullDto eventFullDto = getEventById(eventId);
+        return findCommentsByEvent(eventFullDto.getId(), pageRequest);
+    }
+
+    @Transactional(readOnly = true)
+    List<CommentResponseDto> findCommentsByEvent(Long eventId, PageRequest pageRequest) {
         List<Comment> comments = commentRepository.findByEventId(eventId, pageRequest);
         log.info("Получены все комментарии события с id = {}", eventId);
         return comments.stream().map(CommentMapper::toCommentResponseDto).toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public CommentResponseDto findById(final Long commentId) {
-        Comment comment = getCommentById(commentId);
-        return CommentMapper.toCommentResponseDto(comment);
+        return CommentMapper.toCommentResponseDto(getCommentById(commentId));
     }
 
     private Long getUserById(Long userId) {
         try {
             return userApi.getUserById(userId).getId();
         } catch (FeignException e) {
-            new NotFoundException("Не найден пользователя с ID: " + userId);
-            return null;
+            throw new NotFoundException("Не найден пользователя с ID: " + userId);
         }
     }
 
@@ -136,8 +162,7 @@ public class CommentServiceImpl implements CommentService {
         try {
             return eventApi.getEventFullDtoById(eventId);
         } catch (FeignException e) {
-            new NotFoundException("Не найдено событие с ID: " + eventId);
-            return null;
+            throw new NotFoundException("Не найдено событие с ID: " + eventId);
         }
     }
 
