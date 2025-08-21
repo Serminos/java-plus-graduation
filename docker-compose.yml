@@ -81,33 +81,101 @@ services:
       - SPRING_DATASOURCE_PASSWORD=password
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
       - SERVER_PORT=9090
+    healthcheck:
+      test: "curl --fail --silent localhost:9090/actuator/health | grep UP || exit 1"
+      timeout: 5s
+      interval: 15s
+      retries: 10
     ports:
       - "9090:9090"
     networks:
       - explore-network
 
-  ewm-db:
+  ewm-event-db:
     image: postgres:16.1
-    container_name: ewm-db
+    container_name: postgres-event-db
     restart: always
     environment:
-      - POSTGRES_DB=ewm_main_db
+      - POSTGRES_DB=ewm_event_db
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
     ports:
-      - "5432:5432"
+      - "6432:5432"
+    networks:
+      - explore-network
+    healthcheck:
+      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
+      timeout: 5s
+      interval: 10s
+      retries: 15
+
+  ewm-comment-db:
+    image: postgres:16.1
+    container_name: postgres-comment-db
+    ports:
+      - "6433:5432"
+    environment:
+      - POSTGRES_DB=ewm_comment_db
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_USER=postgres
+    healthcheck:
+      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
+      timeout: 10s
+      interval: 10s
+      retries: 15
     networks:
       - explore-network
 
+  ewm-request-db:
+    image: postgres:16.1
+    container_name: postgres-request-db
+    ports:
+      - "6434:5432"
+    environment:
+      - POSTGRES_DB=ewm_request_db
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_USER=postgres
+    healthcheck:
+      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
+      timeout: 10s
+      interval: 10s
+      retries: 15
+    networks:
+      - explore-network
+
+  ewm-user-service:
+    build: core/user-service
+    container_name: ewm-user-service
+    depends_on:
+      ewm-event-db:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      stats-server:
+        condition: service_healthy
+    networks:
+      - explore-network
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://ewm-event-db:5432/ewm_event_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=password
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SERVER_PORT=8082
+    healthcheck:
+      test: "curl --fail --silent localhost:8082/actuator/health | grep UP || exit 1"
+      timeout: 5s
+      interval: 25s
+      retries: 10
+
   ewm-service:
-    build: ./core/main-service
+    build: ./core/event-service
     container_name: ewm-service
     restart: always
     depends_on:
-      - ewm-db
+      - ewm-event-db
       - stats-server
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://ewm-db:5432/ewm_main_db
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://ewm-event-db:5432/ewm_event_db
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=password
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
@@ -119,6 +187,55 @@ services:
       retries: 10
     networks:
       - explore-network
+
+  ewm-comment-service:
+    build: core/comment-service
+    container_name: ewm-comment-service
+    depends_on:
+      ewm-comment-db:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      stats-server:
+        condition: service_healthy
+    networks:
+      - explore-network
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://ewm-comment-db:5432/ewm_comment_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=password
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SERVER_PORT=8083
+    healthcheck:
+      test: "curl --fail --silent localhost:8083/actuator/health | grep UP || exit 1"
+      timeout: 5s
+      interval: 25s
+      retries: 10
+
+  ewm-request-service:
+    build: core/request-service
+    container_name: ewm-request-service
+    depends_on:
+      ewm-request-db:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      stats-server:
+        condition: service_healthy
+    networks:
+      - explore-network
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://ewm-request-db:5432/ewm_request_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=password
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SERVER_PORT=8084
+    healthcheck:
+      test: "curl --fail --silent localhost:8084/actuator/health | grep UP || exit 1"
+      timeout: 5s
+      interval: 25s
+      retries: 10
+
 
 networks:
   explore-network:
