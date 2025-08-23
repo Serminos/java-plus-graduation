@@ -57,14 +57,14 @@ public class RequestServiceImpl implements RequestService {
     public ParticipationRequestDto createParticipationRequest(Long userId, Long eventId) {
         final Long initiator = getUserById(userId);
         final EventFullDto eventFullDto = getEventById(eventId);
-        log.info("Найдено событие: {}",
-                eventFullDto);
+        log.info("Найдено событие: {}", eventFullDto);
         requestValidator.validateRequestCreation(initiator, eventFullDto);
 
         final Request request = buildNewRequest(initiator, eventFullDto);
         determineInitialStatus(eventFullDto, request);
 
         final Request savedRequest = requestRepository.save(request);
+        updateEventStatistics(eventFullDto, request.getStatus().getName());
         updateUserAction(userId, eventId);
         log.info("Заявка на участие сохранена со статусом с ID: {} и статусом: {}",
                 savedRequest.getId(), savedRequest.getStatus());
