@@ -38,3 +38,16 @@ resilience4j.circuitbreaker:
       slidingWindowType: COUNT_BASED
       minimumNumberOfCalls: 1
       automaticTransitionFromOpenToHalfOpenEnabled: true
+
+grpc:
+  client:
+    analyzer:
+      address: 'discovery:///analyzer'
+      enableKeepAlive: true
+      keepAliveWithoutCalls: true
+      negotiationType: plaintext
+    collector:
+      address: 'static://collector:9090'
+      enableKeepAlive: true
+      keepAliveWithoutCalls: true
+      negotiationType: plaintext

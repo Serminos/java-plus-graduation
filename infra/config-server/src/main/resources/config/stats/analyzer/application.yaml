@@ -1,0 +1,42 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: true
+  sql:
+    init:
+      mode: always
+
+  datasource:
+    driverClassName: org.postgresql.Driver
+    url: jdbc:postgresql://analyzer-db:5432/ewm_analyzer_db
+    username: postgres
+    password: password
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      user-actions-consumer:
+        group-id: stats.analyzer
+        key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+        value-deserializer: ru.practicum.UserActionDeserializer
+      events-similarity-consumer:
+        group-id: stats.analyzer
+        key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+        value-deserializer: ru.practicum.EventSimilarityDeserializer
+
+kafka:
+  topic:
+    stats:
+      v1: stats.user-actions.v1
+    similarity:
+      v1: stats.events-similarity.v1
+
+grpc:
+  server:
+    port: 0
+
+server:
+  port: 0

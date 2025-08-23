@@ -1,0 +1,24 @@
+spring:
+  kafka:
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: ru.practicum.BaseAvroSerializer
+    consumer:
+      group-id: stats.aggregator
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: ru.practicum.UserActionDeserializer
+    bootstrap-servers: localhost:9092
+
+kafka:
+  topic:
+    stats:
+      v1: stats.user-actions.v1
+    similarity:
+      v1: stats.events-similarity.v1
+
+grpc:
+  server:
+    port: 0
+
+server:
+  port: 0
