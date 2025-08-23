@@ -11,22 +11,16 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.StatsClient;
 import ru.practicum.dto.event.EventFullDto;
 import ru.practicum.dto.event.EventShortDto;
 import ru.practicum.dto.event.SearchPublicEventsParamDto;
 import ru.practicum.event.model.EventSort;
 import ru.practicum.event.service.EventService;
 import ru.practicum.exception.ValidationException;
-import ru.practicum.stats.dto.EndpointHitDto;
-import ru.practicum.stats.dto.ViewStatsDto;
 
-import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Validated
@@ -41,7 +35,7 @@ public class PublicEventController {
     private static final int START_SEARCH_DATE_PERIOD = 100;
     private static final int END_SEARCH_DATE_PERIOD = 300;
     private final EventService eventService;
-    private final StatsClient statsClient;
+    private final String authHeaderKey = "X-EWM-USER-ID";
     DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(DATE_TIME_PATTERN);
 
     @GetMapping
@@ -77,29 +71,6 @@ public class PublicEventController {
                         .build();
 
         List<EventShortDto> eventShortDtos = eventService.searchPublicEvents(searchPublicEventsParamDto);
-        List<Long> eventShortDtoIds = eventShortDtos.stream().map(EventShortDto::getId).toList();
-
-        log.info("Запрос статистики для событий с id {}", eventShortDtoIds);
-        String start = rangeStart.format(dateTimeFormatter);
-        String end = rangeEnd.format(dateTimeFormatter);
-        List<String> uris = buildUrisFromPathAndIds(request.getRequestURI(), eventShortDtoIds);
-        List<ViewStatsDto> viewStatsDtos = getStatisticsEventViews(start,
-                end, uris, true);
-        Map<Long, Long> viewsMap = viewStatsDtos.stream()
-                .collect(Collectors.toMap(
-                        stats -> {
-                            String[] parts = stats.getUri().split("/");
-                            return Long.parseLong(parts[parts.length - 1]);
-                        },
-                        ViewStatsDto::getHits,
-                        (existing, replacement) -> existing
-                ));
-
-        eventShortDtos.forEach(dto ->
-                dto.setViews(viewsMap.getOrDefault(dto.getId(), 0L))
-        );
-        log.info("Обновляем статистику");
-        saveStat(request);
 
         return ResponseEntity.ok(eventShortDtos);
     }
@@ -107,23 +78,9 @@ public class PublicEventController {
     @GetMapping("/{eventId}")
     public ResponseEntity<EventFullDto> getEvent(
             @PathVariable @Positive Long eventId,
-            HttpServletRequest request) {
-        log.info("Запрос на получение опубликованого события с id {}", eventId);
-        EventFullDto eventFullDto = eventService.getPublicEvent(eventId, request);
-
-        log.info("Запрос статистики для события с id {}", eventId);
-        String start = LocalDateTime.now().minusYears(START_SEARCH_DATE_PERIOD).format(dateTimeFormatter);
-        String end = LocalDateTime.now().plusYears(END_SEARCH_DATE_PERIOD).format(dateTimeFormatter);
-        List<ViewStatsDto> viewStatsDtos = getStatisticsEventViews(start,
-                end, List.of(request.getRequestURI()), true);
-        if (viewStatsDtos.size() != 0) {
-            eventFullDto.setViews(viewStatsDtos.get(0).getHits());
-        } else {
-            eventFullDto.setViews(0L);
-        }
-
-        log.info("Обновляем статистику");
-        if (eventFullDto.getId() != null) saveStat(request);
+            @RequestHeader("X-EWM-USER-ID") Long userId) {
+        log.info("Запрос на получение опубликованого события с id {} пользователем", eventId,userId);
+        EventFullDto eventFullDto = eventService.getPublicEvent(eventId, userId);
 
         return ResponseEntity.ok(eventFullDto);
     }
@@ -143,33 +100,22 @@ public class PublicEventController {
         }
     }
 
-    public void saveStat(HttpServletRequest request) {
-        EndpointHitDto hitDto = EndpointHitDto.builder()
-                .app("ewm-service-1")
-                .uri(request.getRequestURI())
-                .ip(request.getRemoteAddr())
-                .timestamp(LocalDateTime.now())
-                .build();
-        statsClient.saveStatEvent(hitDto);
+
+    @GetMapping("/recommendations")
+    public List<EventShortDto> getRecommendations(@RequestHeader(authHeaderKey) Long userId,
+                                                        @RequestParam(defaultValue = "10") int maxResults) {
+        log.info("Запрос на получение рекомендаций от пользователя {} с параметром maxResults={}",
+                userId, maxResults);
+        List<EventShortDto> recommendations = eventService.getRecommendations(userId, maxResults);
+        log.info("Ответ на запрос на получение рекомендаций пользователю {} с телом: {}",
+                userId, recommendations);
+        return recommendations;
     }
 
-    public List<ViewStatsDto> getStatisticsEventViews(String start,
-                                                      String end,
-                                                      List<String> uris,
-                                                      boolean unique) {
-        ResponseEntity<List<ViewStatsDto>> response = statsClient.getStats(
-                start,
-                end,
-                uris,
-                unique
-        );
-
-        return response.getBody();
-    }
-
-    public List<String> buildUrisFromPathAndIds(String uriPath, List<Long> ids) {
-        return ids.stream()
-                .map(id -> Path.of(uriPath, String.valueOf(id)).toString())
-                .collect(Collectors.toList());
+    @PutMapping("/{eventId}/like")
+    public void addLikeToEvent(@PathVariable Long eventId, @RequestHeader(authHeaderKey) Long userId) {
+        log.info("Добавить лайк событию {} от пользователя {}", eventId, userId);
+        eventService.addLikeToEvent(eventId, userId);
+        log.info("Обработан добавление лайка событию {} от пользователя {}", eventId, userId);
     }
 }

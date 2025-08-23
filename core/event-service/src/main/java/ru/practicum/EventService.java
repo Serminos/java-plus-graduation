@@ -11,6 +11,6 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 @EnableFeignClients(basePackages = "ru.practicum")
 public class EventService {
     public static void main(String[] args) {
-        SpringApplication.run(EventService.class,args);
+        SpringApplication.run(EventService.class, args);
     }
 }

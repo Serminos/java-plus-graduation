@@ -50,14 +50,14 @@ services:
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
 
-  stats-db:
+  analyzer-db:
     image: postgres:16.1
-    container_name: stats-db
+    container_name: analyzer-db
     restart: always
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=ewm_stats_db
+      - POSTGRES_DB=ewm_analyzer_db
     ports:
       - "5433:5432"
     networks:
@@ -68,28 +68,6 @@ services:
       interval: 10s
       retries: 15
 
-  stats-server:
-    build: ./stats/stats-server
-    container_name: stats-server
-    restart: always
-    depends_on:
-      config-server:
-        condition: service_healthy
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://stats-db:5432/ewm_stats_db
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=password
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
-      - SERVER_PORT=9090
-    healthcheck:
-      test: "curl --fail --silent localhost:9090/actuator/health | grep UP || exit 1"
-      timeout: 5s
-      interval: 15s
-      retries: 10
-    ports:
-      - "9090:9090"
-    networks:
-      - explore-network
 
   ewm-event-db:
     image: postgres:16.1
@@ -151,8 +129,6 @@ services:
         condition: service_healthy
       config-server:
         condition: service_healthy
-      stats-server:
-        condition: service_healthy
     networks:
       - explore-network
     environment:
@@ -172,8 +148,10 @@ services:
     container_name: ewm-service
     restart: always
     depends_on:
-      - ewm-event-db
-      - stats-server
+      ewm-event-db:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://ewm-event-db:5432/ewm_event_db
       - SPRING_DATASOURCE_USERNAME=postgres
@@ -195,8 +173,6 @@ services:
       ewm-comment-db:
         condition: service_healthy
       config-server:
-        condition: service_healthy
-      stats-server:
         condition: service_healthy
     networks:
       - explore-network
@@ -220,8 +196,6 @@ services:
         condition: service_healthy
       config-server:
         condition: service_healthy
-      stats-server:
-        condition: service_healthy
     networks:
       - explore-network
     environment:
@@ -229,9 +203,109 @@ services:
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=password
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
-      - SERVER_PORT=8084
+      - SERVER_PORT=8087
     healthcheck:
-      test: "curl --fail --silent localhost:8084/actuator/health | grep UP || exit 1"
+      test: "curl --fail --silent localhost:8087/actuator/health | grep UP || exit 1"
+      timeout: 5s
+      interval: 25s
+      retries: 10
+
+  kafka:
+    image: confluentinc/confluent-local:7.4.3
+    hostname: kafka
+    container_name: kafka
+    ports:
+      - "9092:9092" # for client connections
+      - "9101:9101" # JMX
+    restart: unless-stopped
+    networks:
+      - explore-network
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: kafka
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092'
+      CLUSTER_ID: 'K0EA9p0yEe6MkAAAAkKsEg'
+
+  kafka-init-topics:
+    image: confluentinc/confluent-local:7.4.3
+    container_name: kafka-init-topics
+    networks:
+      - explore-network
+    depends_on:
+      - kafka
+    command: "bash -c \
+                'kafka-topics --delete --topic stats.user-actions.v1 --bootstrap-server kafka:29092 --if-exists && \
+                 kafka-topics --delete --topic stats.events-similarity.v1 --bootstrap-server kafka:29092 --if-exists && \
+                 kafka-topics --create --topic stats.user-actions.v1 \
+                              --partitions 1 --replication-factor 1 --if-not-exists \
+                              --bootstrap-server kafka:29092 && \
+                 kafka-topics --create --topic stats.events-similarity.v1 \
+                              --partitions 1 --replication-factor 1 --if-not-exists \
+                              --bootstrap-server kafka:29092'"
+    init: true
+
+  collector:
+    build: stats/collector
+    container_name: collector
+    restart: on-failure
+    depends_on:
+      config-server:
+        condition: service_healthy
+      kafka-init-topics:
+        condition: service_completed_successfully
+      aggregator:
+        condition: service_healthy
+    networks:
+      - explore-network
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+
+
+  aggregator:
+    build: stats/aggregator
+    container_name: aggregator
+    restart: on-failure
+    networks:
+      - explore-network
+    depends_on:
+      config-server:
+        condition: service_healthy
+      kafka-init-topics:
+        condition: service_completed_successfully
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SERVER_PORT=8085
+    healthcheck:
+      test: "curl --fail --silent localhost:8085/actuator/health | grep UP || exit 1"
+      timeout: 5s
+      interval: 25s
+      retries: 10
+
+  analyzer:
+    build: stats/analyzer
+    container_name: analyzer
+    restart: on-failure
+    depends_on:
+      analyzer-db:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      kafka-init-topics:
+        condition: service_completed_successfully
+    networks:
+      - explore-network
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://analyzer-db:5432/ewm_analyzer_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=password
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SERVER_PORT=8086
+    healthcheck:
+      test: "curl --fail --silent localhost:8086/actuator/health | grep UP || exit 1"
       timeout: 5s
       interval: 25s
       retries: 10

@@ -1,6 +1,5 @@
 package ru.practicum.event.service;
 
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Pageable;
 import ru.practicum.dto.event.*;
 
@@ -31,9 +30,12 @@ public interface EventService {
 
     List<EventShortDto> searchPublicEvents(SearchPublicEventsParamDto searchPublicEventsParamDto);
 
-    EventFullDto getPublicEvent(Long eventId,
-                                HttpServletRequest request);
+    EventFullDto getPublicEvent(Long eventId, Long userId);
 
     EventFullDto increaseConfirmed(Long eventId, Integer quantity);
+
+    List<EventShortDto> getRecommendations(Long userId, int maxResults);
+
+    void addLikeToEvent(Long eventId, Long userId);
 
 }

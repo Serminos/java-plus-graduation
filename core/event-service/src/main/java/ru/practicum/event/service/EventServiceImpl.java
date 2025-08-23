@@ -1,8 +1,8 @@
 package ru.practicum.event.service;
 
+import com.google.protobuf.Timestamp;
 import feign.FeignException;
 import jakarta.persistence.criteria.Predicate;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -16,6 +16,8 @@ import ru.practicum.api.RequestApi;
 import ru.practicum.api.UserApi;
 import ru.practicum.category.model.Category;
 import ru.practicum.category.repository.CategoryRepository;
+import ru.practicum.client.AnalyzerClient;
+import ru.practicum.client.CollectorClient;
 import ru.practicum.dto.event.*;
 import ru.practicum.event.mapper.EventMapper;
 import ru.practicum.event.model.Event;
@@ -25,12 +27,17 @@ import ru.practicum.event.repository.LocationRepository;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.exception.ValidationException;
+import ru.practicum.grpc.stats.action.ActionTypeProto;
+import ru.practicum.grpc.stats.action.UserActionProto;
+import ru.practicum.grpc.stats.event.InteractionsCountRequestProto;
+import ru.practicum.grpc.stats.event.RecommendedEventProto;
+import ru.practicum.grpc.stats.event.UserPredictionsRequestProto;
 import ru.practicum.validation.EventValidator;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -44,6 +51,9 @@ public class EventServiceImpl implements EventService {
     private final LocationRepository locationRepository;
     private final RequestApi requestApi;
     private final EventValidator eventValidator;
+    private final CollectorClient collectorClient;
+    private final AnalyzerClient analyzerClient;
+
 
     @Override
     @Transactional(readOnly = true)
@@ -221,13 +231,76 @@ public class EventServiceImpl implements EventService {
 
     @Transactional(readOnly = true)
     @Override
-    public EventFullDto getPublicEvent(Long eventId,
-                                       HttpServletRequest request) {
+    public EventFullDto getPublicEvent(Long eventId, Long userId) {
         Event event = getEventById(eventId);
         if (!event.getState().equals(EventState.PUBLISHED)) {
             throw new NotFoundException("У события должен быть статус <PUBLISHED>");
         }
-        return EventMapper.toFullDto(event);
+        sendStats(userId, eventId);
+        EventFullDto eventFullDto = EventMapper.toFullDto(event);
+        eventFullDto.setRating(getEventRating(event.getId()));
+        return eventFullDto;
+    }
+
+    @Override
+    public List<EventShortDto> getRecommendations(Long userId, int maxResults) {
+        List<RecommendedEventProto> protoList = analyzerClient.getRecommendationsForUser(UserPredictionsRequestProto.newBuilder()
+                .setUserId(userId)
+                .setMaxResults(maxResults)
+                .build());
+
+        if (protoList.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<Long> eventIds = protoList.stream()
+                .map(RecommendedEventProto::getEventId)
+                .collect(Collectors.toList());
+        List<Event> events = eventRepository.findAllById(eventIds);
+        Map<Long, Event> eventMap = events.stream()
+                .collect(Collectors.toMap(Event::getId, Function.identity()));
+
+        List<EventShortDto> eventShortDtos = new ArrayList<>();
+        for (RecommendedEventProto proto : protoList) {
+            Event event = eventMap.get(proto.getEventId());
+            if (event != null) {
+                eventShortDtos.add(EventMapper.toShortDto(event));
+            }
+        }
+
+        return eventShortDtos;
+    }
+
+    @Override
+    public void addLikeToEvent(Long eventId, Long userId) {
+        log.debug("Сохраняем лайк от пользователя = {}", userId);
+        collectorClient.newUserAction(UserActionProto.newBuilder()
+                .setUserId(userId)
+                .setEventId(eventId)
+                .setActionType(ActionTypeProto.ACTION_LIKE)
+                .setTimestamp(Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond())
+                        .setNanos(Instant.now().getNano()).build())
+                .build());
+    }
+
+    private void sendStats(long userId, long eventId) {
+        log.debug("Сохраняем просмотр от пользователя = {}", userId);
+        collectorClient.newUserAction(UserActionProto.newBuilder()
+                .setUserId(userId)
+                .setEventId(eventId)
+                .setActionType(ActionTypeProto.ACTION_VIEW)
+                .setTimestamp(Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond())
+                        .setNanos(Instant.now().getNano()).build())
+                .build());
+    }
+
+    private double getEventRating(long eventId) {
+        List<RecommendedEventProto> proto = analyzerClient.getInteractionsCount(InteractionsCountRequestProto.newBuilder()
+                .addEventId(eventId)
+                .build());
+        if (proto.isEmpty())
+            return 0;
+        else
+            return proto.get(0).getScore();
     }
 
     private List<EventShortDto> paginateAndMap(List<Event> events, PageRequest pageRequest) {
