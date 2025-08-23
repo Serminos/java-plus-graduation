@@ -7,7 +7,7 @@ spring:
       group-id: stats.aggregator
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: ru.practicum.UserActionDeserializer
-    bootstrap-servers: kafka:29092
+    bootstrap-servers: localhost:9092
 
 kafka:
   topic:

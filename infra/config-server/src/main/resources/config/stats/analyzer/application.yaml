@@ -16,7 +16,7 @@ spring:
     password: password
 
   kafka:
-    bootstrap-servers: kafka:29092
+    bootstrap-servers: localhost:9092
     consumer:
       user-actions-consumer:
         group-id: stats.analyzer
@@ -28,7 +28,6 @@ spring:
         value-deserializer: ru.practicum.EventSimilarityDeserializer
 
 kafka:
-  bootstrap-server: kafka:9092
   topic:
     stats:
       v1: stats.user-actions.v1
